@@ -1,10 +1,16 @@
 #include <GL/glew.h>
 #include <math.h>
 #include "GLM.h"
+#include "Disk.h"
 
-mat4 view(1.0f);
-mat4 model(1.0f);
-mat4 projection(1.0f);
+mat4 view_matrix(1.0f);
+GLuint view_matrix_loc;
+
+mat4 model_matrix(1.0f);
+GLuint model_matrix_loc;
+
+mat4 projection_matrix(1.0f);
+GLuint projection_matrix_loc;
 
 GLuint program;
 float aspect = 0.0;
@@ -21,8 +27,11 @@ vec3* modifiedNorms = NULL;
 // vectors that the program came with
 
 bool show_line = false;
+bool isTopView = false;
+bool isPhongShading = true;
+bool isGouraudShading = false;
 
-vec4 light_position(10.0, 6.0, 8.0, 0.0);  // directional light source
+vec4 light_position(10.0, 10.0, 10.0, 1.0);  // directional light source
 GLfloat timeUpdate = 0.0;
 GLfloat vscale = 0.0;
 
@@ -34,6 +43,9 @@ vec4 material_ambient(0.6, 0.5, 0.3, 1.0f);
 vec4 material_diffuse(0.9, 0.5, 0.3, 1.0f);
 vec4 material_specular(0.8, 0.8, 0.8, 1.0f);
 
+GLfloat eye[3] = { 0.0f, 5.0f, 30.5f };
+GLfloat center[3] = { 0.0f, 0.0f, 0.0f };
+
 vec4 lightintensity = vec4(0.9f, 0.9f, 0.9f, 1.0f);
 
 GLboolean update = false;
@@ -42,6 +54,8 @@ GLboolean changeWave = false;
 void Initialize();
 void Display(void);
 void Reshape(int width, int height);
+void rotateLight();
+void delay(int n);
 
 GLchar* ReadFile(const char* filename);
 GLuint initShaders(const char* v_shader, const char* f_shader);
@@ -130,23 +144,6 @@ GLuint initShaders(const char *v_shader, const char *f_shader) {
 }
 
 
-/*
-void updateVertexNormals(vec3* vertices, vec3* norms) {
-	
-	for (int i = 0; i < objmodel->numnormals; i++) {
-		norms[i] = vec3(0.0, 0.0, 0.0);
-	}
-
-}
-
-void updateVertexCosine(vec3* ptr, vec3* verts, vec3* norms, int count){}
-
-
-*/
-
-
-
-
 void updateVertexNormals(vec3* vertices, vec3* norms) {
 	vec3 v1, v2, v3, n;
 
@@ -172,6 +169,8 @@ void updateVertexNormals(vec3* vertices, vec3* norms) {
 		norms[i] = -normalize(norms[i]);
 	}
 }
+
+
 void Initialize(void){
 	// Create the program for rendering the model
 	
@@ -188,11 +187,16 @@ void Initialize(void){
 
 	// Create and compile our GLSL program from the shaders
 
-	program = initShaders("shader.vs", "shader.fs");
+	program = initShaders("bunny_shader.vs", "bunny_shader.fs");
+	//program = initShaders("phong_shader.vs", "phong_shader.fs");
+
+	view_matrix_loc = glGetUniformLocation(program, "view_matrix");
+	model_matrix_loc = glGetUniformLocation(program, "model_matrix");
+	projection_matrix_loc = glGetUniformLocation(program, "projection_matrix");
 	
 	glUseProgram(program);
-	view = glm::lookAt(vec3(0.0f, 1.0f, 3.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
-	projection = mat4(1.0f);
+	view_matrix = glm::lookAt(vec3(0.0f, 1.0f, 3.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+	projection_matrix = mat4(1.0f);
 
 	// Fill up the buffers!
 	glGenVertexArrays(1, &vao);
@@ -229,8 +233,25 @@ void Initialize(void){
 	glUniform4fv(glGetUniformLocation(program, "LightPosition"), 1, (GLfloat*)&light_position[0]);
 	glUniform1f(glGetUniformLocation(program, "Shininess"), material_shininess);
 
+
+
+
+
+
+	glUniform1f(glGetUniformLocation(program, "Spot_exponent"), 30.0f); 
+	glUniform1f(glGetUniformLocation(program, "Spot_cutoff"), 15.0f);
+
+	glUniform3fv(glGetUniformLocation(program, "Spot_direction"), 1, (GLfloat*)&angle);
+
+
+
+
+
+
 	modifiedVerts = (vec3*)malloc(sizeof(vec3) * (objmodel->numvertices));
 	modifiedNorms = (vec3*)malloc(sizeof(vec3) * (objmodel->numvertices));
+
+	createDisk();
 
 	glClearColor(0.8, 0.8, 0.8, 1.0);
 }
@@ -241,13 +262,9 @@ void Display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 
-	model = mat4(1.0f);
-	projection = glm::perspective(radians(45.0f), aspect,0.3f, 100.0f); 
-	
-	
-	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model[0]);
-	glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, (GLfloat*)&view[0]);
-	glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, (GLfloat*)&projection[0]);
+	projection_matrix = glm::perspective(radians(45.0f), aspect,0.3f, 100.0f);
+	glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, (GLfloat*)&view_matrix[0]);
+	glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, (GLfloat*)&projection_matrix[0]);
 
 	
 	glBindVertexArray(vao);
@@ -257,13 +274,44 @@ void Display(void)
 	else
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	
+
+	if (isPhongShading) {
+		//program = initShaders("phong_shader.vs", "phong_shader.fs");
+	}
+	else {
+		//program = initShaders("gouraud_shader.vs", "gouraud_shader.fs");
+	}
+
+
+	//Set normal view
+	view_matrix = glm::lookAt(vec3(eye[0], eye[1], eye[2]), glm::vec3(center[0], center[1], center[2]), glm::vec3(0.0f, 1.0f, 0.0f));
+	glUniformMatrix4fv(view_matrix_loc, 1, GL_FALSE, (GLfloat*)&view_matrix[0]);
+
+	//Set top view
+	if (isTopView) {
+		view_matrix = lookAt(vec3(0.0f, 25.0f, 0.0), vec3(0.0, 0.0, 0.0), vec3(0.0f, 0.0f, -1.0f));
+		glUniformMatrix4fv(view_matrix_loc, 1, GL_FALSE, (GLfloat*)&view_matrix[0]);
+	}
+
+
+
+	//Draws the bunny
+	model_matrix = mat4(1.0f);
+	model_matrix = scale(model_matrix, vec3(7.0f, 7.0f, 7.0f));
+	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model_matrix[0]);
 	glDrawElements(GL_TRIANGLES, objmodel->numindices, GL_UNSIGNED_INT, NULL);
 	
-	glBindVertexArray(0);
 
-	glutSwapBuffers();
+	//Draws the disk
+	model_matrix = mat4(1.0f);
+	model_matrix = translate(model_matrix, vec3(0.0f, -5.0f, 0.0f));
+	model_matrix = scale(model_matrix, vec3(10.0f, 0.0f, 10.0f));
+	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model_matrix[0]);
+	drawDisk();
+
+	glBindVertexArray(0);
 	
+	glutSwapBuffers();
 }
 
 /******************************************************************************************/
@@ -282,17 +330,36 @@ void keyboard(unsigned char key, int x, int y){
 	case 'u':case 'U':
 		show_line = !show_line;
 		break;
-	
+	case 't':case 'T':
+		isTopView = !isTopView;
+		break;
+	case 's':case 'S':
+		isPhongShading = !isPhongShading;
+		isGouraudShading = !isGouraudShading;
+		break;
 }
 	glutPostRedisplay();
 }
 /**************************************************************************************/
-void Delay(int n) {
 
-	
+void delay(int n) {
+
+	angle += 5.0f;
+
+	rotateLight();
+
 	glutPostRedisplay();
-	glutTimerFunc(50, Delay, n);
 
+	glutTimerFunc(100, delay, n);
+
+}
+
+void rotateLight() {
+
+	light_position.x = cos(radians(angle)) * 10.0f;
+	light_position.z = sin(radians(angle)) * 10.0f;
+
+	glUniform4fv(glGetUniformLocation(program, "LightPosition"), 1, (GLfloat*)&light_position[0]);
 }
 
 /****************************************************************************************/
@@ -302,7 +369,7 @@ int main(int argc, char** argv){
 	glutInitDisplayMode(GLUT_RGBA|GLUT_DOUBLE|GLUT_DEPTH);
 	glutInitWindowSize(512, 512);
 	
-	glutCreateWindow("Updating a Model with Wave Functions");
+	glutCreateWindow("Modeling a Spot Light - Phong Shading");
 
 	if (glewInit()){
 		printf("Unable to initialize GLEW ... exiting\n");
@@ -313,7 +380,7 @@ int main(int argc, char** argv){
 	glutDisplayFunc(Display);
 	glutKeyboardFunc(keyboard);
 	glutReshapeFunc(Reshape);
-	glutTimerFunc(100, Delay, 0);
+	glutTimerFunc(100, delay, 0);
 	glutMainLoop();
 	return 0;
 }
