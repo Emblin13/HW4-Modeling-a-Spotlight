@@ -31,7 +31,7 @@ bool isTopView = false;
 bool isPhongShading = false;
 bool isGouraudShading = true;
 
-vec4 light_position(10.0, 10.0, 10.0, 1.0);  // directional light source
+vec4 light_position(10.0, 10.0, 10.0, 1.0);
 GLfloat timeUpdate = 0.0;
 GLfloat vscale = 0.0;
 
@@ -185,7 +185,55 @@ void Initialize(void){
 		updateVertexNormals(objmodel->vertices, objmodel->normals);
 	   }
 
-	// Create and compile our GLSL program from the shaders
+	//Unitize the model
+	float min_x, max_x, min_y, max_y, min_z, max_z;
+	min_x = max_x = objmodel->vertices[0].x;
+	min_y = max_y = objmodel->vertices[0].y;
+	min_z = max_z = objmodel->vertices[0].z;
+
+	// Find the min and max values of the vertices
+	for (int i = 0; i < objmodel->numvertices; i++) {
+		if (objmodel->vertices[i].x < min_x) min_x = objmodel->vertices[i].x;
+		if (objmodel->vertices[i].x > max_x) max_x = objmodel->vertices[i].x;
+		if (objmodel->vertices[i].y < min_y) min_y = objmodel->vertices[i].y;
+		if (objmodel->vertices[i].y > max_y) max_y = objmodel->vertices[i].y;
+		if (objmodel->vertices[i].z < min_z) min_z = objmodel->vertices[i].z;
+		if (objmodel->vertices[i].z > max_z) max_z = objmodel->vertices[i].z;
+	}
+
+	float center_x = (max_x + min_x) / 2;
+	float center_y = (max_y + min_y) / 2;
+	float center_z = (max_z + min_z) / 2;
+
+	float width = abs(max_x - min_x);
+	float height = abs(max_y - min_y);
+	float depth = abs(max_z - min_z);
+
+	float scale = max(depth, max(width, height));
+
+	//Moving points to center of the screen
+	for (int i = 0; i < objmodel->numvertices; i++) {
+		objmodel->vertices[i].x -= center_x;
+		objmodel->vertices[i].y -= center_y;
+		objmodel->vertices[i].z -= center_z;
+	}
+
+	//Scale the model to fit within the box whose width, height, and depth extend from -0.5 to 0.5
+	for (int i = 0; i < objmodel->numvertices; i++) {
+		objmodel->vertices[i].x /= scale;
+		objmodel->vertices[i].y /= scale;
+		objmodel->vertices[i].z /= scale;
+	}
+
+	//Scale the mode to fit within the box whose width, height, and depth extend from -1.0 to 1.0
+	for (int i = 0; i < objmodel->numvertices; i++) {
+		objmodel->vertices[i].x *= 2;
+		objmodel->vertices[i].y *= 2;
+		objmodel->vertices[i].z *= 2;
+	}
+
+
+
 
 	//program = initShaders("bunny_shader.vs", "bunny_shader.fs");
 	//program = initShaders("phong_shader.vs", "phong_shader.fs");
@@ -237,6 +285,18 @@ void Initialize(void){
 	glUniform4fv(glGetUniformLocation(program, "AmbientProduct"), 1, (GLfloat*)&ambient_product[0]);
 	glUniform4fv(glGetUniformLocation(program, "DiffuseProduct"), 1, (GLfloat*)&diffuse_product[0]);
 	glUniform4fv(glGetUniformLocation(program, "SpecularProduct"), 1, (GLfloat*)&specular_product[0]);
+
+
+
+	/*
+	vec4 light_pos;
+
+	if (light_position.w == 0)
+		light_pos = light_position;
+	else
+		light_pos = view_matrix * light_position;
+	*/
+
 
 	glUniform4fv(glGetUniformLocation(program, "LightPosition"), 1, (GLfloat*)&light_position[0]);
 	glUniform1f(glGetUniformLocation(program, "Shininess"), material_shininess);
@@ -312,7 +372,7 @@ void Display(void)
 
 	//Draws the disk
 	model_matrix = mat4(1.0f);
-	model_matrix = translate(model_matrix, vec3(0.0f, -5.0f, 0.0f));
+	model_matrix = translate(model_matrix, vec3(0.0f, -7.0f, 0.0f));
 	model_matrix = scale(model_matrix, vec3(10.0f, 0.0f, 10.0f));
 	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model_matrix[0]);
 	drawDisk();
@@ -367,6 +427,8 @@ void rotateLight() {
 
 	light_position.x = cos(radians(angle)) * 10.0f;
 	light_position.z = sin(radians(angle)) * 10.0f;
+	
+
 
 	glUniform4fv(glGetUniformLocation(program, "LightPosition"), 1, (GLfloat*)&light_position[0]);
 }
