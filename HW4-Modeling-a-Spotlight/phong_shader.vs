@@ -3,7 +3,7 @@
 layout (location = 0) in vec3 VertexPosition;
 layout (location = 1) in vec3 VertexNormal;
 
-out vec3 Color;
+out vec3 fColor;
 
 // Normalized direction towards light source in eye coords.
 uniform vec4 LightPosition;
@@ -54,7 +54,7 @@ void main()
     
 
     // Evaluate the lighting equation
-    Color = ads( eyePosition, eyeNorm );
+    fColor = ads( eyePosition, eyeNorm );
 
     gl_Position = projection*view*model*vec4(VertexPosition,1.0);
 }

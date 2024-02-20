@@ -28,8 +28,8 @@ vec3* modifiedNorms = NULL;
 
 bool show_line = false;
 bool isTopView = false;
-bool isPhongShading = true;
-bool isGouraudShading = false;
+bool isPhongShading = false;
+bool isGouraudShading = true;
 
 vec4 light_position(10.0, 10.0, 10.0, 1.0);  // directional light source
 GLfloat timeUpdate = 0.0;
@@ -187,8 +187,16 @@ void Initialize(void){
 
 	// Create and compile our GLSL program from the shaders
 
-	program = initShaders("bunny_shader.vs", "bunny_shader.fs");
+	//program = initShaders("bunny_shader.vs", "bunny_shader.fs");
 	//program = initShaders("phong_shader.vs", "phong_shader.fs");
+	//program = initShaders("gouraud_shader.vs", "gouraud_shader.fs");
+
+	if (isPhongShading) {
+		program = initShaders("phong_shader.vs", "phong_shader.fs");
+	}
+	else {
+		program = initShaders("gouraud_shader.vs", "gouraud_shader.fs");
+	}
 
 	view_matrix_loc = glGetUniformLocation(program, "view_matrix");
 	model_matrix_loc = glGetUniformLocation(program, "model_matrix");
@@ -336,6 +344,7 @@ void keyboard(unsigned char key, int x, int y){
 	case 's':case 'S':
 		isPhongShading = !isPhongShading;
 		isGouraudShading = !isGouraudShading;
+		Initialize();
 		break;
 }
 	glutPostRedisplay();

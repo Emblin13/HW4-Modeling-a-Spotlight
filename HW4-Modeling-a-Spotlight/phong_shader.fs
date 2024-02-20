@@ -1,15 +1,15 @@
 #version 430
 
-in vec3 Color;
+in vec3 fColor;
 
-out vec4 fColor;
+out vec4 color;
 
 
 
 void main(void)
 {
 
-fColor = min(vec4(Color, 1.0), vec4(1.0));
+color = min(vec4(fColor, 1.0), vec4(1.0));
 
 
 }
