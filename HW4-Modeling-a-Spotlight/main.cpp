@@ -2,14 +2,15 @@
 #include <math.h>
 #include "GLM.h"
 #include "Disk.h"
+#include "Sphere.h"
 
-mat4 view_matrix(1.0f);
+mat4 view(1.0f);
 GLuint view_matrix_loc;
 
-mat4 model_matrix(1.0f);
+mat4 model(1.0f);
 GLuint model_matrix_loc;
 
-mat4 projection_matrix(1.0f);
+mat4 projection(1.0f);
 GLuint projection_matrix_loc;
 
 GLuint program;
@@ -21,15 +22,15 @@ GLuint ebo;
 
 /* Class GLM object*/
 GLMmodel* objmodel = NULL;
-vec3* modifiedVerts = NULL;
-vec3* modifiedNorms = NULL;
+//vec3* modifiedVerts = NULL;
+//vec3* modifiedNorms = NULL;
 
 // vectors that the program came with
 
 bool show_line = false;
 bool isTopView = false;
-bool isPhongShading = false;
-bool isGouraudShading = true;
+bool isPhongShading = true;
+bool isGouraudShading = false;
 
 vec4 light_position(10.0, 10.0, 10.0, 1.0);
 GLfloat timeUpdate = 0.0;
@@ -42,8 +43,10 @@ vec4 specular_product;
 vec4 material_ambient(0.6, 0.5, 0.3, 1.0f);
 vec4 material_diffuse(0.9, 0.5, 0.3, 1.0f);
 vec4 material_specular(0.8, 0.8, 0.8, 1.0f);
+float material_shininess = 50.0;
 
-GLfloat eye[3] = { 0.0f, 5.0f, 30.5f };
+//GLfloat eye[3] = { 0.0f, 5.0f, 30.5f };
+GLfloat eye[3] = { 0.0f, 15.0f, 50.5f };
 GLfloat center[3] = { 0.0f, 0.0f, 0.0f };
 
 vec4 lightintensity = vec4(0.9f, 0.9f, 0.9f, 1.0f);
@@ -59,6 +62,8 @@ void delay(int n);
 
 GLchar* ReadFile(const char* filename);
 GLuint initShaders(const char* v_shader, const char* f_shader);
+void setUniform(GLuint p);
+void unitizeModel();
 /*************************************************************************************/
 GLchar* ReadFile(const char* filename) {
 	FILE* infile;
@@ -166,7 +171,7 @@ void updateVertexNormals(vec3* vertices, vec3* norms) {
 
 	// Normalize the normals and flip them)
 	for (int i = 0; i < objmodel->numnormals; i++) {
-		norms[i] = -normalize(norms[i]);
+		norms[i] = normalize(norms[i]);
 	}
 }
 
@@ -185,6 +190,66 @@ void Initialize(void){
 		updateVertexNormals(objmodel->vertices, objmodel->normals);
 	   }
 
+	   unitizeModel();
+
+
+	//program = initShaders("bunny_shader.vs", "bunny_shader.fs");
+	//program = initShaders("phong_shader.vs", "phong_shader.fs");
+	//program = initShaders("gouraud_shader.vs", "gouraud_shader.fs");
+
+	if (isPhongShading) {
+		program = initShaders("spot_phong.vs", "spot_phong.fs");
+	}
+	else {
+		program = initShaders("spot_gouraud.vs", "spot_gouraud.fs");
+	}
+
+	glUseProgram(program);
+
+
+	view_matrix_loc = glGetUniformLocation(program, "view");
+	model_matrix_loc = glGetUniformLocation(program, "model");
+	projection_matrix_loc = glGetUniformLocation(program, "projection");
+
+	// Fill up the buffers!
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	GLuint offset = 0;
+	glGenBuffers(1, vbo);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * (objmodel->numvertices) + sizeof(vec3) * (objmodel->numvertices), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, offset, sizeof(vec3) * (objmodel->numvertices), objmodel->vertices);
+	glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);  // Vertex position
+	
+	offset += sizeof(vec3) * (objmodel->numvertices);
+	glBufferSubData(GL_ARRAY_BUFFER, offset, sizeof(vec3) * (objmodel->numvertices), objmodel->normals);
+	glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid *)(sizeof(vec3) * (objmodel->numvertices)) );
+	glEnableVertexAttribArray(1);  // Vertex normal
+
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*(objmodel->numindices), objmodel->indices, GL_STATIC_DRAW);
+
+	glBindVertexArray(0);
+	
+
+	ambient_product = lightintensity*material_ambient;
+	diffuse_product = lightintensity*material_diffuse;
+	specular_product = lightintensity*material_specular;
+
+
+	setUniform(program);
+
+
+	createDisk();
+	createSphere();
+	
+	glClearColor(0.8, 0.8, 0.8, 1.0);
+}
+
+void unitizeModel() {
 	//Unitize the model
 	float min_x, max_x, min_y, max_y, min_z, max_z;
 	min_x = max_x = objmodel->vertices[0].x;
@@ -231,98 +296,8 @@ void Initialize(void){
 		objmodel->vertices[i].y *= 2;
 		objmodel->vertices[i].z *= 2;
 	}
-
-
-
-
-	//program = initShaders("bunny_shader.vs", "bunny_shader.fs");
-	//program = initShaders("phong_shader.vs", "phong_shader.fs");
-	//program = initShaders("gouraud_shader.vs", "gouraud_shader.fs");
-
-	if (isPhongShading) {
-		program = initShaders("phong_shader.vs", "phong_shader.fs");
-	}
-	else {
-		program = initShaders("gouraud_shader.vs", "gouraud_shader.fs");
-	}
-
-	view_matrix_loc = glGetUniformLocation(program, "view_matrix");
-	model_matrix_loc = glGetUniformLocation(program, "model_matrix");
-	projection_matrix_loc = glGetUniformLocation(program, "projection_matrix");
-	
-	glUseProgram(program);
-	view_matrix = glm::lookAt(vec3(0.0f, 1.0f, 3.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
-	projection_matrix = mat4(1.0f);
-
-	// Fill up the buffers!
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	GLuint offset = 0;
-	glGenBuffers(1, vbo);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * (objmodel->numvertices) + sizeof(vec3) * (objmodel->numvertices), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, offset, sizeof(vec3) * (objmodel->numvertices), objmodel->vertices);
-	glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);  // Vertex position
-	
-	offset += sizeof(vec3) * (objmodel->numvertices);
-	glBufferSubData(GL_ARRAY_BUFFER, offset, sizeof(vec3) * (objmodel->numvertices), objmodel->normals);
-	glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid *)(sizeof(vec3) * (objmodel->numvertices)) );
-	glEnableVertexAttribArray(1);  // Vertex normal
-
-	glGenBuffers(1, &ebo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*(objmodel->numindices), objmodel->indices, GL_STATIC_DRAW);
-
-	glBindVertexArray(0);
-	
-	float material_shininess = 50.0;
-	ambient_product = lightintensity*material_ambient;
-	diffuse_product = lightintensity*material_diffuse;
-	specular_product = lightintensity*material_specular;
-
-	glUniform4fv(glGetUniformLocation(program, "AmbientProduct"), 1, (GLfloat*)&ambient_product[0]);
-	glUniform4fv(glGetUniformLocation(program, "DiffuseProduct"), 1, (GLfloat*)&diffuse_product[0]);
-	glUniform4fv(glGetUniformLocation(program, "SpecularProduct"), 1, (GLfloat*)&specular_product[0]);
-
-
-
-	/*
-	vec4 light_pos;
-
-	if (light_position.w == 0)
-		light_pos = light_position;
-	else
-		light_pos = view_matrix * light_position;
-	*/
-
-
-	glUniform4fv(glGetUniformLocation(program, "LightPosition"), 1, (GLfloat*)&light_position[0]);
-	glUniform1f(glGetUniformLocation(program, "Shininess"), material_shininess);
-
-
-
-
-
-
-	glUniform1f(glGetUniformLocation(program, "Spot_exponent"), 30.0f); 
-	glUniform1f(glGetUniformLocation(program, "Spot_cutoff"), 15.0f);
-
-	glUniform3fv(glGetUniformLocation(program, "Spot_direction"), 1, (GLfloat*)&angle);
-
-
-
-
-
-
-	modifiedVerts = (vec3*)malloc(sizeof(vec3) * (objmodel->numvertices));
-	modifiedNorms = (vec3*)malloc(sizeof(vec3) * (objmodel->numvertices));
-
-	createDisk();
-
-	glClearColor(0.8, 0.8, 0.8, 1.0);
 }
+
 /*******************************************************************************************/
 void Display(void)
 {
@@ -330,11 +305,22 @@ void Display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 
-	projection_matrix = glm::perspective(radians(45.0f), aspect,0.3f, 100.0f);
-	glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, (GLfloat*)&view_matrix[0]);
-	glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, (GLfloat*)&projection_matrix[0]);
 
-	
+
+	vec4 light_pos_new = view * light_position;
+	glUniform4fv(glGetUniformLocation(program, "Spot.position"), 1, (GLfloat*)&light_pos_new[0]);
+
+	vec3 spot_direction = mat3(view) * vec3(-light_position);
+	glUniform1f(glGetUniformLocation(program, "Spot.exponent"), 30.0f);
+	glUniform1f(glGetUniformLocation(program, "Spot.cutoff"), 15.0f);
+	glUniform3fv(glGetUniformLocation(program, "Spot.direction"), 1, (GLfloat*)&spot_direction[0]);
+
+
+
+	projection = glm::perspective(radians(45.0f), aspect,0.3f, 100.0f);
+	glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, (GLfloat*)&view[0]);
+	glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, (GLfloat*)&projection[0]);
+
 	glBindVertexArray(vao);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
 	if (show_line)
@@ -352,30 +338,36 @@ void Display(void)
 
 
 	//Set normal view
-	view_matrix = glm::lookAt(vec3(eye[0], eye[1], eye[2]), glm::vec3(center[0], center[1], center[2]), glm::vec3(0.0f, 1.0f, 0.0f));
-	glUniformMatrix4fv(view_matrix_loc, 1, GL_FALSE, (GLfloat*)&view_matrix[0]);
+	view = glm::lookAt(vec3(eye[0], eye[1], eye[2]), glm::vec3(center[0], center[1], center[2]), glm::vec3(0.0f, 1.0f, 0.0f));
+	glUniformMatrix4fv(view_matrix_loc, 1, GL_FALSE, (GLfloat*)&view[0]);
 
 	//Set top view
 	if (isTopView) {
-		view_matrix = lookAt(vec3(0.0f, 25.0f, 0.0), vec3(0.0, 0.0, 0.0), vec3(0.0f, 0.0f, -1.0f));
-		glUniformMatrix4fv(view_matrix_loc, 1, GL_FALSE, (GLfloat*)&view_matrix[0]);
+		view = lookAt(vec3(0.0f, 25.0f, 0.0), vec3(0.0, 0.0, 0.0), vec3(0.0f, 0.0f, -1.0f));
+		glUniformMatrix4fv(view_matrix_loc, 1, GL_FALSE, (GLfloat*)&view[0]);
 	}
 
 
-
 	//Draws the bunny
-	model_matrix = mat4(1.0f);
-	model_matrix = scale(model_matrix, vec3(7.0f, 7.0f, 7.0f));
-	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model_matrix[0]);
+	model = mat4(1.0f);
+	model = scale(model, vec3(7.0f, 7.0f, 7.0f));
+	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model[0]);
 	glDrawElements(GL_TRIANGLES, objmodel->numindices, GL_UNSIGNED_INT, NULL);
 	
 
 	//Draws the disk
-	model_matrix = mat4(1.0f);
-	model_matrix = translate(model_matrix, vec3(0.0f, -7.0f, 0.0f));
-	model_matrix = scale(model_matrix, vec3(10.0f, 0.0f, 10.0f));
-	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model_matrix[0]);
+	model = mat4(1.0f);
+	model = translate(model, vec3(0.0f, -7.0f, 0.0f));
+	model = scale(model, vec3(10.0f, 0.0f, 10.0f));
+	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model[0]);
 	drawDisk();
+
+
+	//Draws the sphere
+	model = mat4(1.0f);
+	model = translate(model, vec3(light_position.x, light_position.y, light_position.z));
+	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model[0]);
+	drawSphere();
 
 	glBindVertexArray(0);
 	
@@ -404,6 +396,10 @@ void keyboard(unsigned char key, int x, int y){
 	case 's':case 'S':
 		isPhongShading = !isPhongShading;
 		isGouraudShading = !isGouraudShading;
+
+		if (isPhongShading) glutSetWindowTitle("Modeling a Spot Light - Phong Shading");
+		else glutSetWindowTitle("Modeling a Spot Light - Gouraud Shading");
+
 		Initialize();
 		break;
 }
@@ -411,15 +407,34 @@ void keyboard(unsigned char key, int x, int y){
 }
 /**************************************************************************************/
 
+
+
+
+void setUniform(GLuint p) {
+
+	glUseProgram(p);
+	glUniform4fv(glGetUniformLocation(p, "AmbientProduct"), 1, (GLfloat*)&ambient_product[0]);
+	glUniform4fv(glGetUniformLocation(p, "DiffuseProduct"), 1, (GLfloat*)&diffuse_product[0]);
+	glUniform4fv(glGetUniformLocation(p, "SpecularProduct"), 1, (GLfloat*)&specular_product[0]);
+	glUniform4fv(glGetUniformLocation(p, "Spot.intensity"), 1, (GLfloat*)&lightintensity[0]);
+
+	glUniform4fv(glGetUniformLocation(p, "Spot.position"), 1, (GLfloat*)&light_position[0]);
+	glUniform1f(glGetUniformLocation(p, "Shininess"), material_shininess);
+
+
+}
+
+
+//This updates at the same rate needed for the assignment, just done in more increments so it's smoother.
 void delay(int n) {
 
-	angle += 5.0f;
+	angle += 1.25f;
 
 	rotateLight();
 
 	glutPostRedisplay();
 
-	glutTimerFunc(100, delay, n);
+	glutTimerFunc(25, delay, n);
 
 }
 
@@ -451,7 +466,7 @@ int main(int argc, char** argv){
 	glutDisplayFunc(Display);
 	glutKeyboardFunc(keyboard);
 	glutReshapeFunc(Reshape);
-	glutTimerFunc(100, delay, 0);
+	glutTimerFunc(25, delay, 0);
 	glutMainLoop();
 	return 0;
 }

@@ -1,50 +1,64 @@
 #include <GL/glew.h>
-#include <glm/mat4x4.hpp>
 #include "GLM.h"
-#include "Disk.h"
-
-unsigned int disk_vao;
+#include "Sphere.h"
 
 using namespace glm;
 
-void createDisk()
+unsigned int sphere_vao;
+
+void createSphere()
 {
-	
 	vec4 vertices[NumVertices];
-	vertices[0] = vec4(0.0, 0.0, 0.0, 1.0);
-
 	vec3 normals[NumVertices];
-	normals[0] = vec3(0.0, 1.0, 0.0);
-
-	//vec2 textures[NumVertices];
-	//textures[0] = vec2(0.5, 0.5);
-
 	GLuint indices[NumIndices];
+	vec2 textures[NumVertices];
 
-	for (int i = 0; i < NumTriangles; i++) {
+	//Calculate the vertices, normals and texture coordinates
+	float theta, phi;
+	int i = 0, a = 0, k = 0, index = 0;
+	for (double b = (-STEP / 2.0); b <= (STEP / 2.0); b++) {
 
-		float angle = radians((GLfloat)(i * 360 / NumTriangles));
-		vertices[i + 1] = vec4(cos(angle), 0.0, sin(angle), 1.0);
-		//textures[i + 1] = vec2(((1 + cos(angle)) / 2.0), ((1 + sin(angle)) / 2.0));
+		for (int a = 0; a <= STEP; a++) {
 
-		if (i < NumTriangles - 1) {
-			indices[i * 3 + 0] = 0;
-			indices[i * 3 + 1] = i + 1;
-			indices[i * 3 + 2] = i + 2;
+			phi = ((1.0 * a) / STEP) * 2 * M_PI;
+			theta = ((1.0 * b) / STEP) * M_PI;
+
+			vertices[i].x = cos(theta) * sin(phi);
+			vertices[i].y = sin(theta);
+			vertices[i].z = cos(theta) * cos(phi);
+			vertices[i].w = 1.0f;
+
+			normals[i] = normalize(vec3(vertices[i]));
+
+			textures[i].x = (1.0 * a) / STEP;
+			textures[i].y = ((1.0 * b) / STEP) + 0.5;
+
+			i++;
 		}
+	}
 
-		if (i == NumTriangles - 1) {
-			indices[i * 3 + 0] = 0;
-			indices[i * 3 + 1] = i + 1;
-			indices[i * 3 + 2] = 1;
+	//Calculate the indices
+	int index_one = 0, index_two = 0, index_three = 0, index_four = 0;
+	for (int i = 0; i < (NumVertices - (STEP + 1)); i += STEP + 1) {
+
+		for (int j = i; j < (i + STEP); j++) {
+
+			index_one = j;
+			index_two = j + STEP + 1;
+			index_three = j + STEP + 2;
+			index_four = j + 1;
+
+			indices[index++] = index_one;
+			indices[index++] = index_two;
+			indices[index++] = index_three;
+
+			indices[index++] = index_one;
+			indices[index++] = index_three;
+			indices[index++] = index_four;
 		}
 
 	}
 
-	//Calculate the per-vertex normals
-	for (int i = 0; i < NumVertices; i++) {
-		normals[i] = vec3(0.0, 1.0, 0.0);
-	}
 
 
 
@@ -97,7 +111,6 @@ void createDisk()
 		vertices[i].y *= 2;
 		vertices[i].z *= 2;
 	}
-	
 
 
 
@@ -105,55 +118,15 @@ void createDisk()
 
 
 
-	/*
-	////////////////////////////// Example project disk
-	int i, index = 0;
-	float theta;
-	vec4 p1, p2, p3;
 
-	float radius = 10.0;
-
-	vec4 vertices[NumVertices];
-	vec3 normals[NumVertices];
-
-	GLuint indices[NumIndices];
-
-	GLfloat steps = 360.0 / NumTriangles;
-
-	vec4 red(1.0, 0.0, 0.0, 1.0);
-
-	vertices[0] = vec4(0.0, 0.0, 0.0, 1.0);
-
-	normals[0] = vec3(0.0, 1.0, 0.0);
-
-	//calculate vertex position for base vertices
-	for (i = 0; i < NumTriangles; ++i) {
-		theta = i * steps;
-
-		vertices[i + 1] = vec4(radius * cos(radians(theta)), 0.0, -radius * sin(radians(theta)), 1.0);
-		normals[i + 1] = vec3(0.0, 1.0, 0.0);
-
-	}
-
-	//calculate indices
-	for (i = 0; i < NumTriangles; i++) {
-		indices[i * 3 + 0] = 0;
-		indices[i * 3 + 1] = i + 1;
-		if (i < (NumTriangles - 1))
-			indices[i * 3 + 2] = i + 2;
-		else
-			indices[i * 3 + 2] = 1;
-	}
-	///////////////////////////////
-	*/
 
 
 	//ADD OBJECT METHOD
-	glGenVertexArrays(1, &disk_vao);
-	glBindVertexArray(disk_vao);
+	glGenVertexArrays(1, &sphere_vao);
+	glBindVertexArray(sphere_vao);
 
-	unsigned int handle[3];
-	glGenBuffers(3, handle);
+	unsigned int handle[4];
+	glGenBuffers(4, handle);
 
 	// Vertices in the model
 	glBindBuffer(GL_ARRAY_BUFFER, handle[0]);
@@ -168,25 +141,19 @@ void createDisk()
 	glEnableVertexAttribArray(1);
 
 	// Texture coordinates in the model
-	//glBindBuffer(GL_ARRAY_BUFFER, handle[2]);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(textures), textures, GL_STATIC_DRAW);
-	//glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	//glEnableVertexAttribArray(2);
+	glBindBuffer(GL_ARRAY_BUFFER, handle[2]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(textures), textures, GL_STATIC_DRAW);
+	glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(2);
 
 	// Indices in the model
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, handle[2]);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, handle[3]);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 	glBindVertexArray(0);
-
 }
 
-void drawDisk() {
-	glBindVertexArray(disk_vao);
-	glDrawElements(GL_TRIANGLES, NumIndices, GL_UNSIGNED_INT, NULL);
+void drawSphere() {
+    glBindVertexArray(sphere_vao);
+    glDrawElements(GL_TRIANGLES, NumIndices, GL_UNSIGNED_INT, 0);
 }
-
-
-
-
-
