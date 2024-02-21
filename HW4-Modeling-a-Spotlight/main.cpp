@@ -45,8 +45,8 @@ vec4 material_diffuse(0.9, 0.5, 0.3, 1.0f);
 vec4 material_specular(0.8, 0.8, 0.8, 1.0f);
 float material_shininess = 50.0;
 
-//GLfloat eye[3] = { 0.0f, 5.0f, 30.5f };
-GLfloat eye[3] = { 0.0f, 15.0f, 50.5f };
+GLfloat eye[3] = { 0.0f, 5.0f, 30.5f };
+//GLfloat eye[3] = { 0.0f, 15.0f, 50.5f };
 GLfloat center[3] = { 0.0f, 0.0f, 0.0f };
 
 vec4 lightintensity = vec4(0.9f, 0.9f, 0.9f, 1.0f);
@@ -169,7 +169,7 @@ void updateVertexNormals(vec3* vertices, vec3* norms) {
 		norms[objmodel->indices[i + 2]] += n;
 	}
 
-	// Normalize the normals and flip them)
+	// Normalize the normals
 	for (int i = 0; i < objmodel->numnormals; i++) {
 		norms[i] = normalize(norms[i]);
 	}
@@ -246,7 +246,7 @@ void Initialize(void){
 	createDisk();
 	createSphere();
 	
-	glClearColor(0.8, 0.8, 0.8, 1.0);
+	glClearColor(0.0, 0.0, 0.0, 1.0);
 }
 
 void unitizeModel() {
@@ -315,7 +315,7 @@ void Display(void)
 	glUniform1f(glGetUniformLocation(program, "Spot.cutoff"), 15.0f);
 	glUniform3fv(glGetUniformLocation(program, "Spot.direction"), 1, (GLfloat*)&spot_direction[0]);
 
-
+	glUniform1i(glGetUniformLocation(program, "On"), 0);
 
 	projection = glm::perspective(radians(45.0f), aspect,0.3f, 100.0f);
 	glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, (GLfloat*)&view[0]);
@@ -347,12 +347,11 @@ void Display(void)
 		glUniformMatrix4fv(view_matrix_loc, 1, GL_FALSE, (GLfloat*)&view[0]);
 	}
 
-
 	//Draws the bunny
 	model = mat4(1.0f);
 	model = scale(model, vec3(7.0f, 7.0f, 7.0f));
 	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model[0]);
-	glDrawElements(GL_TRIANGLES, objmodel->numindices, GL_UNSIGNED_INT, NULL);
+	//glDrawElements(GL_TRIANGLES, objmodel->numindices, GL_UNSIGNED_INT, NULL);
 	
 
 	//Draws the disk
@@ -366,6 +365,7 @@ void Display(void)
 	//Draws the sphere
 	model = mat4(1.0f);
 	model = translate(model, vec3(light_position.x, light_position.y, light_position.z));
+	glUniform1i(glGetUniformLocation(program, "On"), 1); //Enables full-model lighting. If any normals have light shining on them, the entire object lights up.
 	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model[0]);
 	drawSphere();
 
@@ -428,13 +428,13 @@ void setUniform(GLuint p) {
 //This updates at the same rate needed for the assignment, just done in more increments so it's smoother.
 void delay(int n) {
 
-	angle += 1.25f;
+	angle += 0.5f;
 
 	rotateLight();
 
 	glutPostRedisplay();
 
-	glutTimerFunc(25, delay, n);
+	glutTimerFunc(10, delay, n);
 
 }
 
@@ -466,7 +466,7 @@ int main(int argc, char** argv){
 	glutDisplayFunc(Display);
 	glutKeyboardFunc(keyboard);
 	glutReshapeFunc(Reshape);
-	glutTimerFunc(25, delay, 0);
+	glutTimerFunc(10, delay, 0);
 	glutMainLoop();
 	return 0;
 }

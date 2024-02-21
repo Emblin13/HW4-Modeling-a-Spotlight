@@ -20,7 +20,7 @@ using namespace glm;
 
 extern unsigned int disk_vao;
 
-#define NumTriangles 32
+#define NumTriangles 4
 #define NumVertices NumTriangles+1
 #define NumIndices NumTriangles*3
 

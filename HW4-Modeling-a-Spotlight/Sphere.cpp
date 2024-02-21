@@ -28,7 +28,7 @@ void createSphere()
 			vertices[i].z = cos(theta) * cos(phi);
 			vertices[i].w = 1.0f;
 
-			normals[i] = normalize(vec3(vertices[i]));
+			normals[i] = -normalize(vec3(vertices[i]));
 
 			textures[i].x = (1.0 * a) / STEP;
 			textures[i].y = ((1.0 * b) / STEP) + 0.5;
