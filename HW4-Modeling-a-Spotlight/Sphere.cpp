@@ -60,11 +60,6 @@ void createSphere()
 	}
 
 
-
-
-
-
-
 	//Unitize the model
 	float min_x, max_x, min_y, max_y, min_z, max_z;
 	min_x = max_x = vertices[0].x;
@@ -111,14 +106,6 @@ void createSphere()
 		vertices[i].y *= 2;
 		vertices[i].z *= 2;
 	}
-
-
-
-
-
-
-
-
 
 
 	//ADD OBJECT METHOD

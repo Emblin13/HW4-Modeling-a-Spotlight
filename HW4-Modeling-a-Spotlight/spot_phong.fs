@@ -17,7 +17,7 @@ uniform vec4 AmbientProduct;            // Ambient reflectivity
 uniform vec4 SpecularProduct;            // Specular reflectivity
 uniform float Shininess;    // Specular shininess factor
 
-uniform unsigned int On;
+uniform int On;
 
 layout( location = 0 ) out vec4 FragColor;
 
@@ -29,9 +29,11 @@ vec3 adsWithSpotlight( )
     float cutoff = radians( Spot.cutoff);
    
     vec3 ambient = vec3(AmbientProduct);
+    vec3 diffuse = vec3(DiffuseProduct);
+    vec3 specular = vec3(SpecularProduct);
 
     if(On == 1) {
-		return AmbientProduct + DiffuseProduct + SpecularProduct;
+		return ambient + diffuse + specular;
 	}
     else if( angle < cutoff ) {
         float spotFactor = pow( dot(-s, spotDir), Spot.exponent );

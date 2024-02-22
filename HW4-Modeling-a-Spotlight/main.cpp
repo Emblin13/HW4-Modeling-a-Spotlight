@@ -351,7 +351,7 @@ void Display(void)
 	model = mat4(1.0f);
 	model = scale(model, vec3(7.0f, 7.0f, 7.0f));
 	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (GLfloat*)&model[0]);
-	//glDrawElements(GL_TRIANGLES, objmodel->numindices, GL_UNSIGNED_INT, NULL);
+	glDrawElements(GL_TRIANGLES, objmodel->numindices, GL_UNSIGNED_INT, NULL);
 	
 
 	//Draws the disk
@@ -442,8 +442,6 @@ void rotateLight() {
 
 	light_position.x = cos(radians(angle)) * 10.0f;
 	light_position.z = sin(radians(angle)) * 10.0f;
-	
-
 
 	glUniform4fv(glGetUniformLocation(program, "LightPosition"), 1, (GLfloat*)&light_position[0]);
 }

@@ -47,10 +47,6 @@ void createDisk()
 	}
 
 
-
-
-
-
 	//Unitize the model
 	float min_x, max_x, min_y, max_y, min_z, max_z;
 	min_x = max_x = vertices[0].x;
@@ -98,54 +94,6 @@ void createDisk()
 		vertices[i].z *= 2;
 	}
 	
-
-
-
-
-
-
-	/*
-	////////////////////////////// Example project disk
-	int i, index = 0;
-	float theta;
-	vec4 p1, p2, p3;
-
-	float radius = 10.0;
-
-	vec4 vertices[NumVertices];
-	vec3 normals[NumVertices];
-
-	GLuint indices[NumIndices];
-
-	GLfloat steps = 360.0 / NumTriangles;
-
-	vec4 red(1.0, 0.0, 0.0, 1.0);
-
-	vertices[0] = vec4(0.0, 0.0, 0.0, 1.0);
-
-	normals[0] = vec3(0.0, 1.0, 0.0);
-
-	//calculate vertex position for base vertices
-	for (i = 0; i < NumTriangles; ++i) {
-		theta = i * steps;
-
-		vertices[i + 1] = vec4(radius * cos(radians(theta)), 0.0, -radius * sin(radians(theta)), 1.0);
-		normals[i + 1] = vec3(0.0, 1.0, 0.0);
-
-	}
-
-	//calculate indices
-	for (i = 0; i < NumTriangles; i++) {
-		indices[i * 3 + 0] = 0;
-		indices[i * 3 + 1] = i + 1;
-		if (i < (NumTriangles - 1))
-			indices[i * 3 + 2] = i + 2;
-		else
-			indices[i * 3 + 2] = 1;
-	}
-	///////////////////////////////
-	*/
-
 
 	//ADD OBJECT METHOD
 	glGenVertexArrays(1, &disk_vao);
